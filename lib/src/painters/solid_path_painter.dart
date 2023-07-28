@@ -5,7 +5,7 @@ class SolidCropPathPainter extends CustomPainter {
   static const _strokeWidth = 4.0;
   final Path _path;
   final _paint = Paint()
-    ..color = Colors.white
+    ..color = Colors.white.withOpacity(0.5)
     ..strokeWidth = _strokeWidth
     ..style = PaintingStyle.stroke
     ..strokeJoin = StrokeJoin.round;
