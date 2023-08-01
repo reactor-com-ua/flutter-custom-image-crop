@@ -102,11 +102,14 @@ class CustomImageCrop extends StatefulWidget {
 class _CustomImageCropState extends State<CustomImageCrop>
     with CustomImageCropListener {
   CropImageData? _dataTransitionStart;
+  CropImageData? _moveStartData;
   late Path _path;
   late double _width, _height;
   ui.Image? _imageAsUIImage;
   ImageStream? _imageStream;
   ImageStreamListener? _imageListener;
+  Rect? _currentCropRect;
+  Rect? _currentImageRect;
 
   @override
   void initState() {
@@ -159,15 +162,26 @@ class _CustomImageCropState extends State<CustomImageCrop>
       builder: (context, constraints) {
         _width = constraints.maxWidth;
         _height = constraints.maxHeight;
-        final cropWidth = min(_width, _height) * widget.cropPercentage;
-        final defaultScale = cropWidth / max(image.width, image.height);
+        final cropWidth = _width * widget.cropPercentage;
+        final defaultScale = (image.height > image.width)
+            ? cropWidth / image.width
+            : cropWidth / image.height;
         final scale = data.scale * defaultScale;
         _path = _getPath((cropWidth - 20.0), _width, _height);
+        _currentCropRect = _getRect(cropWidth, _width, _height);
+        _currentImageRect = Rect.fromLTWH(
+          (_width / 2) - ((image.width * scale) / 2) + data.x,
+          (_height / 2) - ((image.height * scale) / 2) + data.y,
+          image.width * scale,
+          image.height * scale,
+        );
         return XGestureDetector(
           onMoveStart: onMoveStart,
           onMoveUpdate: onMoveUpdate,
+          onMoveEnd: onMoveEnd,
           onScaleStart: onScaleStart,
           onScaleUpdate: onScaleUpdate,
+          onScaleEnd: onScaleEnd,
           child: Container(
             width: _width,
             height: _height,
@@ -211,28 +225,56 @@ class _CustomImageCropState extends State<CustomImageCrop>
   }
 
   void onScaleUpdate(ScaleEvent event) {
-    final scale =
+    var scale =
         widget.canScale ? event.scale : (_dataTransitionStart?.scale ?? 1.0);
-
     final angle = widget.canRotate ? event.rotationAngle : 0.0;
 
-    if (_dataTransitionStart != null) {
-      addTransition(
-        _dataTransitionStart! -
-            CropImageData(
-              scale: scale,
-              angle: angle,
-            ),
-      );
-    }
-    _dataTransitionStart = CropImageData(
+    var data = CropImageData(
       scale: scale,
       angle: angle,
     );
+    if (_dataTransitionStart != null) {
+      addTransition(
+        _dataTransitionStart! - data,
+      );
+    }
+    _dataTransitionStart = data;
+  }
+
+  void onScaleEnd() {
+    if (_currentImageRect != null &&
+        _currentCropRect != null &&
+        (_currentImageRect!.width < _currentCropRect!.width ||
+            _currentImageRect!.height < _currentCropRect!.height)) {
+      setData(
+        CropImageData(
+          x: 0.0,
+          y: 0.0,
+          angle: _dataTransitionStart!.angle,
+          scale: 1.0,
+        ),
+      );
+    }
   }
 
   void onMoveStart(_) {
     _dataTransitionStart = null; // Reset for update
+    _moveStartData = data;
+  }
+
+  void onMoveEnd(_) {
+    if (_moveStartData != null &&
+        _currentImageRect != null &&
+        _currentCropRect != null) {
+      if (_currentCropRect!.size.width > _currentImageRect!.size.width ||
+          _currentCropRect!.size.height > _currentImageRect!.size.height ||
+          _currentCropRect!.left < _currentImageRect!.left ||
+          _currentCropRect!.top < _currentImageRect!.top ||
+          _currentCropRect!.right > _currentImageRect!.right ||
+          _currentCropRect!.bottom > _currentImageRect!.bottom) {
+        setData(_moveStartData!);
+      }
+    }
   }
 
   void onMoveUpdate(MoveEvent event) {
@@ -260,6 +302,22 @@ class _CustomImageCropState extends State<CustomImageCrop>
               height: cropWidth,
             ),
           );
+    }
+  }
+
+  Rect _getRect(double cropWidth, double width, double height) {
+    switch (widget.shape) {
+      case CustomCropShape.Circle:
+        return Rect.fromCircle(
+          center: Offset(width / 2, height / 2),
+          radius: cropWidth / 2,
+        );
+      default:
+        return Rect.fromCenter(
+          center: Offset(width / 2, height / 2),
+          width: cropWidth,
+          height: cropWidth,
+        );
     }
   }
 
