@@ -168,12 +168,20 @@ class _CustomImageCropState extends State<CustomImageCrop>
             : cropWidth / image.height;
         final scale = data.scale * defaultScale;
         _path = _getPath((cropWidth - 20.0), _width, _height);
-        _currentCropRect = _getRect(cropWidth, _width, _height);
+        _currentCropRect = _getRect(cropWidth - 20.0, _width, _height);
+        final imageWidth =
+            (data.angle == 0.0 || data.angle == 3.141592653589793)
+                ? image.width
+                : image.height;
+        final imageHeight =
+            (data.angle == 0.0 || data.angle == 3.141592653589793)
+                ? image.height
+                : image.width;
         _currentImageRect = Rect.fromLTWH(
-          (_width / 2) - ((image.width * scale) / 2) + data.x,
-          (_height / 2) - ((image.height * scale) / 2) + data.y,
-          image.width * scale,
-          image.height * scale,
+          (_width / 2) - ((imageWidth * scale) / 2) + data.x,
+          (_height / 2) - ((imageHeight * scale) / 2) + data.y,
+          imageWidth * scale,
+          imageHeight * scale,
         );
         return XGestureDetector(
           onMoveStart: onMoveStart,
@@ -250,7 +258,7 @@ class _CustomImageCropState extends State<CustomImageCrop>
         CropImageData(
           x: 0.0,
           y: 0.0,
-          angle: _dataTransitionStart!.angle,
+          angle: data.angle,
           scale: 1.0,
         ),
       );
@@ -322,11 +330,13 @@ class _CustomImageCropState extends State<CustomImageCrop>
   }
 
   Path _getCropPath(
-      double cropWidth, double cropHeight, double width, double height) {
+    double cropWidth,
+    double cropHeight,
+  ) {
     return Path()
       ..addRect(
         Rect.fromCenter(
-          center: Offset(width / 2, height / 2),
+          center: Offset(cropWidth / 2, cropHeight / 2),
           width: cropWidth,
           height: cropHeight,
         ),
@@ -343,12 +353,14 @@ class _CustomImageCropState extends State<CustomImageCrop>
     final pictureRecorder = ui.PictureRecorder();
     final canvas = Canvas(pictureRecorder);
     final uiWidth = min(_width, _height) * widget.cropPercentage;
-    final cropWidth = imageWidth.toDouble(); //, imageHeight
+    final cropWidth = imageWidth.toDouble();
     final cropHeight = (cropWidth / 3) * 4;
     final translateScale = cropWidth / uiWidth;
     final scale = data.scale;
-    final clipPath =
-        Path.from(_getCropPath(cropWidth, cropHeight, cropWidth, cropHeight));
+    final clipPath = Path.from(_getCropPath(
+      cropWidth,
+      cropHeight,
+    ));
     final matrix4Image = Matrix4.diagonal3(vector_math.Vector3.all(1))
       ..translate(translateScale * data.x + cropWidth / 2,
           translateScale * data.y + cropHeight / 2)
@@ -382,6 +394,11 @@ class _CustomImageCropState extends State<CustomImageCrop>
 
   @override
   void addTransition(CropImageData transition) {
+    if (transition.angle == -1.5707963267948966 &&
+        data.angle != transition.angle) {
+      transition.x = -(data.x);
+      transition.y = -(data.y);
+    }
     setState(() {
       data += transition;
       // For now, this will do. The idea is that we create
