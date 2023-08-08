@@ -167,8 +167,8 @@ class _CustomImageCropState extends State<CustomImageCrop>
             ? cropWidth / image.width
             : cropWidth / image.height;
         final scale = data.scale * defaultScale;
-        _path = _getPath((cropWidth - 20.0), _width, _height);
-        _currentCropRect = _getRect(cropWidth - 20.0, _width, _height);
+        _path = _getPath((cropWidth - 60.0), _width, _height);
+        _currentCropRect = _getRect(cropWidth - 60.0, _width, _height);
         final imageWidth =
             (data.angle == 0.0 || data.angle == 3.141592653589793)
                 ? image.width
