@@ -33,4 +33,6 @@ class CropImageData {
 
   /// Representation of the data as a string.
   String toString() => "{x: $x, y: $y, angle: $angle, scale: $scale}";
+
+  CropImageData copy() => CropImageData(x: x, y: y, angle: angle, scale: scale);
 }

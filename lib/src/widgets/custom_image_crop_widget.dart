@@ -102,14 +102,13 @@ class CustomImageCrop extends StatefulWidget {
 class _CustomImageCropState extends State<CustomImageCrop>
     with CustomImageCropListener {
   CropImageData? _dataTransitionStart;
-  CropImageData? _moveStartData;
   late Path _path;
   late double _width, _height;
   ui.Image? _imageAsUIImage;
   ImageStream? _imageStream;
   ImageStreamListener? _imageListener;
-  Rect? _currentCropRect;
-  Rect? _currentImageRect;
+  // Rect? _currentCropRect;
+  // Rect? _currentImageRect;
 
   @override
   void initState() {
@@ -168,28 +167,26 @@ class _CustomImageCropState extends State<CustomImageCrop>
             : cropWidth / image.height;
         final scale = data.scale * defaultScale;
         _path = _getPath((cropWidth - 60.0), _width, _height);
-        _currentCropRect = _getRect(cropWidth - 60.0, _width, _height);
-        final imageWidth =
-            (data.angle == 0.0 || data.angle == 3.141592653589793)
-                ? image.width
-                : image.height;
-        final imageHeight =
-            (data.angle == 0.0 || data.angle == 3.141592653589793)
-                ? image.height
-                : image.width;
-        _currentImageRect = Rect.fromLTWH(
-          (_width / 2) - ((imageWidth * scale) / 2) + data.x,
-          (_height / 2) - ((imageHeight * scale) / 2) + data.y,
-          imageWidth * scale,
-          imageHeight * scale,
-        );
+        // _currentCropRect = _getRect(cropWidth - 60.0, _width, _height);
+        // final imageWidth =
+        //     (data.angle == 0.0 || data.angle == 3.141592653589793)
+        //         ? image.width
+        //         : image.height;
+        // final imageHeight =
+        //     (data.angle == 0.0 || data.angle == 3.141592653589793)
+        //         ? image.height
+        //         : image.width;
+        // _currentImageRect = Rect.fromLTWH(
+        //   (_width / 2) - ((imageWidth * scale) / 2) + data.x,
+        //   (_height / 2) - ((imageHeight * scale) / 2) + data.y,
+        //   imageWidth * scale,
+        //   imageHeight * scale,
+        // );
         return XGestureDetector(
           onMoveStart: onMoveStart,
           onMoveUpdate: onMoveUpdate,
-          onMoveEnd: onMoveEnd,
           onScaleStart: onScaleStart,
           onScaleUpdate: onScaleUpdate,
-          onScaleEnd: onScaleEnd,
           child: Container(
             width: _width,
             height: _height,
@@ -241,54 +238,68 @@ class _CustomImageCropState extends State<CustomImageCrop>
       scale: scale,
       angle: angle,
     );
-    if (_dataTransitionStart != null) {
-      addTransition(
-        _dataTransitionStart! - data,
-      );
-    }
-    _dataTransitionStart = data;
-  }
-
-  void onScaleEnd() {
-    if (_currentImageRect != null &&
-        _currentCropRect != null &&
-        (_currentImageRect!.width < _currentCropRect!.width ||
-            _currentImageRect!.height < _currentCropRect!.height)) {
-      setData(
-        CropImageData(
-          x: 0.0,
-          y: 0.0,
-          angle: data.angle,
-          scale: 1.0,
-        ),
-      );
+    if (_canDoNextMove(
+        _dataTransitionStart != null ? (_dataTransitionStart! - data) : data)) {
+      if (_dataTransitionStart != null) {
+        addTransition(
+          _dataTransitionStart! - data,
+        );
+      } else {
+        addTransition(
+          data,
+        );
+      }
+      _dataTransitionStart = data;
     }
   }
 
   void onMoveStart(_) {
     _dataTransitionStart = null; // Reset for update
-    _moveStartData = data;
-  }
-
-  void onMoveEnd(_) {
-    if (_moveStartData != null &&
-        _currentImageRect != null &&
-        _currentCropRect != null) {
-      if (_currentCropRect!.size.width > _currentImageRect!.size.width ||
-          _currentCropRect!.size.height > _currentImageRect!.size.height ||
-          _currentCropRect!.left < _currentImageRect!.left ||
-          _currentCropRect!.top < _currentImageRect!.top ||
-          _currentCropRect!.right > _currentImageRect!.right ||
-          _currentCropRect!.bottom > _currentImageRect!.bottom) {
-        setData(_moveStartData!);
-      }
-    }
   }
 
   void onMoveUpdate(MoveEvent event) {
     if (!widget.canMove) return;
+    if (_canDoNextMove(CropImageData(x: event.delta.dx, y: event.delta.dy))) {
+      addTransition(CropImageData(x: event.delta.dx, y: event.delta.dy));
+    }
+  }
 
-    addTransition(CropImageData(x: event.delta.dx, y: event.delta.dy));
+  bool _canDoNextMove(CropImageData transition) {
+    bool canDo = true;
+    var currentData = data.copy();
+    currentData += transition;
+    currentData.scale = currentData.scale.clamp(0.1, 10.0);
+    final image = _imageAsUIImage;
+    final cropWidth = _width * widget.cropPercentage;
+    final defaultScale = (image!.height > image.width)
+        ? cropWidth / image.width
+        : cropWidth / image.height;
+    final scale = currentData.scale * defaultScale;
+    final currentCropRect = _getRect(cropWidth - 60.0, _width, _height);
+    final imageWidth =
+        (currentData.angle == 0.0 || currentData.angle == 3.141592653589793)
+            ? image.width
+            : image.height;
+    final imageHeight =
+        (currentData.angle == 0.0 || currentData.angle == 3.141592653589793)
+            ? image.height
+            : image.width;
+    final currentImageRect = Rect.fromLTWH(
+      (_width / 2) - ((imageWidth * scale) / 2) + currentData.x,
+      (_height / 2) - ((imageHeight * scale) / 2) + currentData.y,
+      imageWidth * scale,
+      imageHeight * scale,
+    );
+
+    if (currentCropRect.size.width > currentImageRect.size.width ||
+        currentCropRect.size.height > currentImageRect.size.height ||
+        currentCropRect.left < currentImageRect.left ||
+        currentCropRect.top < currentImageRect.top ||
+        currentCropRect.right > currentImageRect.right ||
+        currentCropRect.bottom > currentImageRect.bottom) {
+      canDo = false;
+    }
+    return canDo;
   }
 
   Path _getPath(double cropWidth, double width, double height) {
@@ -353,8 +364,8 @@ class _CustomImageCropState extends State<CustomImageCrop>
     final pictureRecorder = ui.PictureRecorder();
     final canvas = Canvas(pictureRecorder);
     final uiWidth = min(_width, _height) * widget.cropPercentage;
-    final cropWidth = imageWidth.toDouble();
-    final cropHeight = (cropWidth / 3) * 4;
+    final cropWidth = imageWidth.toDouble() - 120;
+    final cropHeight = ((cropWidth / 3) * 4);
     final translateScale = cropWidth / uiWidth;
     final scale = data.scale;
     final clipPath = Path.from(_getCropPath(
