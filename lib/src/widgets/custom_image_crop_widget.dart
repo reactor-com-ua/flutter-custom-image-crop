@@ -107,8 +107,7 @@ class _CustomImageCropState extends State<CustomImageCrop>
   ui.Image? _imageAsUIImage;
   ImageStream? _imageStream;
   ImageStreamListener? _imageListener;
-  // Rect? _currentCropRect;
-  // Rect? _currentImageRect;
+  double? scaleInProgress;
 
   @override
   void initState() {
@@ -167,26 +166,12 @@ class _CustomImageCropState extends State<CustomImageCrop>
             : cropWidth / image.height;
         final scale = data.scale * defaultScale;
         _path = _getPath((cropWidth - 60.0), _width, _height);
-        // _currentCropRect = _getRect(cropWidth - 60.0, _width, _height);
-        // final imageWidth =
-        //     (data.angle == 0.0 || data.angle == 3.141592653589793)
-        //         ? image.width
-        //         : image.height;
-        // final imageHeight =
-        //     (data.angle == 0.0 || data.angle == 3.141592653589793)
-        //         ? image.height
-        //         : image.width;
-        // _currentImageRect = Rect.fromLTWH(
-        //   (_width / 2) - ((imageWidth * scale) / 2) + data.x,
-        //   (_height / 2) - ((imageHeight * scale) / 2) + data.y,
-        //   imageWidth * scale,
-        //   imageHeight * scale,
-        // );
         return XGestureDetector(
           onMoveStart: onMoveStart,
           onMoveUpdate: onMoveUpdate,
           onScaleStart: onScaleStart,
           onScaleUpdate: onScaleUpdate,
+          onScaleEnd: onScaleEnd,
           child: Container(
             width: _width,
             height: _height,
@@ -194,8 +179,14 @@ class _CustomImageCropState extends State<CustomImageCrop>
             child: Stack(
               children: [
                 Positioned(
-                  left: data.x + _width / 2,
-                  top: data.y + _height / 2,
+                  left: (scaleInProgress != null
+                          ? (data.x * scaleInProgress!)
+                          : data.x) +
+                      _width / 2,
+                  top: (scaleInProgress != null
+                          ? (data.y * scaleInProgress!)
+                          : data.y) +
+                      _height / 2,
                   child: Transform(
                     transform: Matrix4.diagonal3(
                         vector_math.Vector3(scale, scale, scale))
@@ -230,26 +221,37 @@ class _CustomImageCropState extends State<CustomImageCrop>
   }
 
   void onScaleUpdate(ScaleEvent event) {
-    var scale =
+    final scale =
         widget.canScale ? event.scale : (_dataTransitionStart?.scale ?? 1.0);
     final angle = widget.canRotate ? event.rotationAngle : 0.0;
-
-    var data = CropImageData(
+    var scaleData = CropImageData(
       scale: scale,
       angle: angle,
     );
-    if (_canDoNextMove(
-        _dataTransitionStart != null ? (_dataTransitionStart! - data) : data)) {
+    scaleInProgress = scale;
+    if (_canDoNextMove(_dataTransitionStart != null
+        ? (_dataTransitionStart! - scaleData)
+        : scaleData)) {
       if (_dataTransitionStart != null) {
         addTransition(
-          _dataTransitionStart! - data,
+          _dataTransitionStart! - scaleData,
         );
       } else {
         addTransition(
-          data,
+          scaleData,
         );
       }
-      _dataTransitionStart = data;
+      _dataTransitionStart = scaleData;
+    }
+  }
+
+  void onScaleEnd() {
+    if (scaleInProgress != null) {
+      final scaledData = data.copy();
+      scaledData.x = scaledData.x * scaleInProgress!;
+      scaledData.y = scaledData.y * scaleInProgress!;
+      scaleInProgress = null;
+      setData(scaledData);
     }
   }
 
@@ -259,8 +261,14 @@ class _CustomImageCropState extends State<CustomImageCrop>
 
   void onMoveUpdate(MoveEvent event) {
     if (!widget.canMove) return;
-    if (_canDoNextMove(CropImageData(x: event.delta.dx, y: event.delta.dy))) {
-      addTransition(CropImageData(x: event.delta.dx, y: event.delta.dy));
+    if (_canDoNextMove(CropImageData(
+      x: event.delta.dx,
+      y: event.delta.dy,
+    ))) {
+      addTransition(CropImageData(
+        x: event.delta.dx,
+        y: event.delta.dy,
+      ));
     }
   }
 
