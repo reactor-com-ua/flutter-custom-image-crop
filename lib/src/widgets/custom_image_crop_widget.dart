@@ -372,7 +372,7 @@ class _CustomImageCropState extends State<CustomImageCrop>
     final pictureRecorder = ui.PictureRecorder();
     final canvas = Canvas(pictureRecorder);
     final uiWidth = min(_width, _height) * widget.cropPercentage;
-    final cropWidth = imageWidth.toDouble() - 120;
+    final cropWidth = imageWidth.toDouble();
     final cropHeight = ((cropWidth / 3) * 4);
     final translateScale = cropWidth / uiWidth;
     final scale = data.scale;
