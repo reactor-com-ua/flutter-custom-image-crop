@@ -228,10 +228,10 @@ class _CustomImageCropState extends State<CustomImageCrop>
       scale: scale,
       angle: angle,
     );
-    scaleInProgress = scale;
     if (_canDoNextMove(_dataTransitionStart != null
         ? (_dataTransitionStart! - scaleData)
         : scaleData)) {
+      scaleInProgress = scale;
       if (_dataTransitionStart != null) {
         addTransition(
           _dataTransitionStart! - scaleData,
