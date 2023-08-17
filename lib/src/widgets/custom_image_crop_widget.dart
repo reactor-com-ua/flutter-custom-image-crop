@@ -292,9 +292,15 @@ class _CustomImageCropState extends State<CustomImageCrop>
         (currentData.angle == 0.0 || currentData.angle == 3.141592653589793)
             ? image.height
             : image.width;
+    final x = scaleInProgress != null
+        ? (currentData.x * scaleInProgress!)
+        : currentData.x;
+    final y = scaleInProgress != null
+        ? (currentData.y * scaleInProgress!)
+        : currentData.y;
     final currentImageRect = Rect.fromLTWH(
-      (_width / 2) - ((imageWidth * scale) / 2) + currentData.x,
-      (_height / 2) - ((imageHeight * scale) / 2) + currentData.y,
+      (_width / 2) - ((imageWidth * scale) / 2) + x,
+      (_height / 2) - ((imageHeight * scale) / 2) + y,
       imageWidth * scale,
       imageHeight * scale,
     );
